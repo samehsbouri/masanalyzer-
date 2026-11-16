@@ -163,8 +163,14 @@ here is what masanalyzer gives you that flat findings lists do not:
    and iOS (ipa/app tree/Mach-O) with the same rules engine, MASVS
    mapping and score.
 
-If you need dynamic analysis, malware feeds or VirusTotal lookups, run
-MobSF alongside — masanalyzer's static layer is designed to stand alone.
+Dynamic runs are captured outside masanalyzer (an emulator plus a proxy,
+because a stdlib scanner cannot own a device farm). Hand the resulting
+session bundle to `--runtime` and its `MAS-DYN-*` findings — cleartext
+requests that were actually sent, credentials that crossed the wire,
+tracker beacons that fired, hosts the static inventory never saw — join the
+same triage queue, graded `observed`. For malware feeds or VirusTotal
+lookups, run MobSF alongside — masanalyzer's static layer is designed to
+stand alone.
 
 ---
 
@@ -225,6 +231,7 @@ CLI options:
 | `--rules FILE` | user JSON rule pack (`CUSTOM-<PACK>-<ID>` findings), repeatable |
 | `--intel FILE` | IOC intel file (domains/IPv4/md5/sha1/sha256 digests), repeatable |
 | `--osv-cache FILE` | JSON OSV-dev CVE cache; advisory matches raise `MAS-SCA-003`. Stale coordinates of the detected SDKs are re-queried automatically (best-effort); `--no-intel-refresh` disables that |
+| `--runtime DIR` | dynamic session bundle (`runtime.json` + optional `traffic.har` / `logcat.txt` from a collector); adds `MAS-DYN-*` findings and `inventory.runtime` |
 | `--serve` | after the scan, serve the generated reports on `http://127.0.0.1:8080/` until Ctrl-C (`--serve-port` changes the port) |
 | `--watch SECONDS` | re-scan the target every SECONDS and rewrite the reports (dev triage loop) |
 | `--list-rules` | print the full rule catalog (id, severity, OWASP category, title) and exit |
@@ -433,6 +440,9 @@ masanalyzer/
 │                 csv / junit / gitlab code-quality renderers + score
 ├── config.py / baseline.py / diffcli.py / deltacli.py
 │                 scan policy, baselines, diff CLI, release gate
+├── runtime/      dynamic session ingestion: runtime.json loader, HAR + logcat
+│                 readers, MAS-DYN-* rules and the static-vs-observed
+│                 host correlation
 ├── watchserver.py  --serve local report server + --watch re-scan loop
 ├── testing/      synthetic fixture builders incl. real signature, .idsig,
 │                 .apks/.aab containers and bytecode-bearing DEX fixtures
@@ -596,7 +606,10 @@ They are synthetic, deterministic and harmless (placeholder hosts, fixture
 
 * Static analysis only: rules are heuristic regex over source/text plus
   structural metadata from the parsers, assisted by a light lexical taint
-  pass — no full dataflow engine, no decompilation, no dynamic analysis.
+  pass — no full dataflow engine and no decompilation. Dynamic behaviour is
+  never captured by the tool itself: `--runtime` ingests a session bundle a
+  collector produced outside it (emulator, adb, MITM proxy) — what that
+  session did not exercise stays unknown.
   Callsite receipts track registers linearly, so control-flow merges can
   leave a stale pairing; treat called_from as an evidence pointer.
 * `.aab` protobuf blocks (manifest, `resources.pb`) need bundletool to

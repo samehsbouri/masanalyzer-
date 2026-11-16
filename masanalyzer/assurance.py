@@ -3,6 +3,11 @@
 Every masanalyzer finding is graded by its *verification method*, so a
 reviewer instantly knows how much trust to put in it:
 
+``observed``   recorded during a dynamic (runtime) session - the app did
+               this on a device: a host was contacted, a token crossed the
+               wire, a permission was exercised. Strongest evidence class,
+               but never proof of absence: a quiet session only shows the
+               exercised flows did not trigger the behaviour.
 ``verified``   derived from cryptographic verification or binary structure
                parsing (signature-chain verification, ELF/Mach-O program
                headers, X.509 parsing, OSV advisory joins on parsed
@@ -27,9 +32,15 @@ from typing import Iterable
 VERIFIED = "verified"
 STRUCTURAL = "structural"
 HEURISTIC = "heuristic"
+OBSERVED = "observed"
 
 #: rule-id -> assurance tier. Rules not listed default to ``heuristic``.
 _RULE_ASSURANCE = {
+    # -- observed: recorded by a dynamic session (masanalyzer.runtime) -------
+    "MAS-DYN-001": OBSERVED,   # cleartext request actually sent
+    "MAS-DYN-002": OBSERVED,   # credential material seen in traffic
+    "MAS-DYN-003": OBSERVED,   # tracker beacon actually contacted
+    "MAS-DYN-004": OBSERVED,   # host static analysis never saw
     # -- verified: cryptographic verification / binary header parsing --------
     "MAS-SUP-008": VERIFIED,   # v1 PKCS#7 -> .SF -> manifest chain
     "MAS-SUP-010": VERIFIED,   # v2 whole-file digest/signature checks

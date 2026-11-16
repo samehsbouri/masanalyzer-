@@ -89,5 +89,16 @@ def rule_catalog() -> List["Rule"]:
         if obj.rule_id not in seen:
             seen.add(obj.rule_id)
             rules.append(obj)
+    # dynamic-session rules (masanalyzer.runtime) are declared beside their
+    # collectors, so they are listed explicitly rather than discovered here
+    try:
+        from ..runtime import RULES as _DYN_RULES
+
+        for obj in _DYN_RULES:
+            if obj.rule_id not in seen:
+                seen.add(obj.rule_id)
+                rules.append(obj)
+    except Exception:  # noqa: BLE001 - catalog must never break on import
+        pass
     rules.sort(key=lambda r: (r.owasp, r.rule_id))
     return rules

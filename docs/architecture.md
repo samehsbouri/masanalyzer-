@@ -312,6 +312,39 @@ Team-policy layer, all best-effort (broken file â‡’ inert + stderr warning)
   skips the re-query for strictly reproducible runs; the explicit
   `masanalyzer-refresh-intel` CLI remains the fleet-wide/CI refresher.
 
+### `masanalyzer.runtime` — dynamic session ingestion
+
+A static scan cannot see what the app does once it runs. This package reads
+a *session bundle* written outside masanalyzer (emulator + `adb` + a
+capturing proxy) and turns it into findings and inventory:
+
+```
+session/
+  runtime.json   required: session provenance, filesystem + hook observations
+  traffic.har    optional: HAR 1.2 export from the proxy
+  logcat.txt     optional: `adb logcat -v threadtime` capture
+```
+
+`load_bundle()` is defensive (a broken member becomes a `warnings` entry; a
+missing/unparsable `runtime.json` is a `BundleError`, because an unlabelled
+session is worthless). `analyze_bundle(bundle, target)` returns the
+`MAS-DYN-*` findings plus the inventory:
+
+* `MAS-DYN-001` cleartext request actually sent (high)
+* `MAS-DYN-002` credential material crossed the wire, values redacted (high)
+* `MAS-DYN-003` tracker host actually contacted (medium)
+* `MAS-DYN-004` host absent from the static inventory (info)
+
+All four are graded `observed` in `assurance.py` — the strongest tier, and
+explicitly not proof of absence: a quiet session shows the exercised flows
+did not trigger the behaviour. `--runtime DIR` / `scan(runtime=…)` attaches
+the session; `inventory.runtime` in `report.json` carries the traffic
+summary, logcat summary (including TLS-handshake failures, the pinning
+signal) and the **static-vs-observed correlation**: `matched`,
+`runtime_only` (the addresses no string scan can enumerate) and
+`static_only` (declared but never called). Without a bundle the pipeline,
+the findings and every rendered report are byte-identical to a static run.
+
 ### `masanalyzer.reporting`
 Renderers depend only on duck-typed results (`result.target`,
 `result.findings`, `Finding.to_dict`, `result.score`) â€” importing

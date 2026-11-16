@@ -118,6 +118,7 @@ def scan(
     intel: Optional[Any] = None,
     osv_cache: Optional[Any] = None,
     refresh_intel: bool = True,
+    runtime: Optional[Any] = None,
 ) -> ScanResult:
     """Run a full static analysis of ``input_path`` (APK/IPA/directory).
 
@@ -184,7 +185,9 @@ def scan(
             pass
     tell("analyze", f"{len(target.files)} files")
 
-    result = analyze_target(target, rule_packs=rule_packs, intel=intel)
+    result = analyze_target(
+        target, rule_packs=rule_packs, intel=intel, runtime=runtime
+    )
     result.started = started.isoformat()
     now = datetime.now(timezone.utc)
     result.finished = now.isoformat()
@@ -218,8 +221,15 @@ def analyze_target(
     target: Target,
     rule_packs: Optional[List[Any]] = None,
     intel: Optional[Any] = None,
+    runtime: Optional[Any] = None,
 ) -> ScanResult:
-    """Static internal: run all analyzers over an already prepared Target."""
+    """Static internal: run all analyzers over an already prepared Target.
+
+    ``runtime`` accepts a session bundle path or an already-loaded
+    :class:`masanalyzer.runtime.RuntimeBundle`; its ``MAS-DYN-*`` findings
+    join the same collector (graded ``observed``) and its inventory lands
+    in ``target.meta["runtime"]``. Static-only runs are unaffected.
+    """
     collector = FindingCollector()
     covered, failures, analytic_count = run_analyzers(target, collector)
     packs_run = 0
@@ -242,6 +252,23 @@ def analyze_target(
                     failures.append(f"intel:{type(exc).__name__}: {exc}")
                 packs_run += 1
     analytic_count += packs_run
+    if runtime is not None:
+        try:
+            from . import runtime as runtime_mod
+
+            bundle = (runtime if hasattr(runtime, "traffic")
+                      else runtime_mod.load_bundle(runtime))
+            dyn_findings, dyn_inventory = runtime_mod.analyze_bundle(
+                bundle, target)
+            collector.extend(dyn_findings)
+            if dyn_inventory:
+                target.meta["runtime"] = dyn_inventory
+            for warning in getattr(bundle, "warnings", None) or []:
+                target.meta.setdefault("warnings", []).append(
+                    f"runtime: {warning}")
+            analytic_count += 1
+        except Exception as exc:  # noqa: BLE001 - a bad bundle must not kill a scan
+            failures.append(f"runtime:{type(exc).__name__}: {exc}")
     try:
         from .owasp import ORDER as _ORDER
 

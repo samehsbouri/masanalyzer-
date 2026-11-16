@@ -180,6 +180,14 @@ def build_parser() -> argparse.ArgumentParser:
         "(strictly offline / reproducible scans)",
     )
     p.add_argument(
+        "--runtime",
+        metavar="DIR",
+        default=None,
+        help="dynamic session bundle (runtime.json plus optional traffic.har "
+        "and logcat.txt written by a collector); adds MAS-DYN-* findings and "
+        "inventory.runtime to the report",
+    )
+    p.add_argument(
         "--list-rules",
         action="store_true",
         help="print the rule catalog (id, severity, title) and exit",
@@ -282,6 +290,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             intel=bundles or None,
             osv_cache=args.osv_cache,
             refresh_intel=not args.no_intel_refresh,
+            runtime=args.runtime,
         )
         _report_intel_refresh(result)
         _warn_intel_age(args.osv_cache, sys.stderr)

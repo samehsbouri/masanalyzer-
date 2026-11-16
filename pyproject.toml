@@ -55,5 +55,6 @@ packages = [
     "masanalyzer.ios",
     "masanalyzer.analysis",
     "masanalyzer.reporting",
+    "masanalyzer.runtime",
     "masanalyzer.testing",
 ]

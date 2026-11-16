@@ -173,6 +173,12 @@ def _inventory(result: Any) -> Dict[str, Any]:
             "entry_points": entry_points[:200],
         }
 
+    # dynamic session ingestion (masanalyzer.runtime): only present when a
+    # runtime bundle was supplied, so static reports stay byte-identical
+    runtime = meta.get("runtime") or {}
+    if runtime:
+        out["runtime"] = runtime
+
     # at-a-glance facts (file hashes, app identity, signature, permissions)
     try:
         from ..overview import build_overview
