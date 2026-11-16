@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=63"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "masanalyzer"
+version = "1.1.0"
+description = "Pure-Python static security analyzer for Android/iOS app bundles (APK/IPA), OWASP Mobile Top 10 2024, stdlib only."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "masanalyzer" }]
+keywords = ["android", "ios", "security", "owasp", "static-analysis", "apk", "ipa", "sarif"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+]
+dependencies = []   # stdlib only, by design
+
+[project.optional-dependencies]
+dev = []            # tests are stdlib unittest; nothing extra needed
+
+[project.scripts]
+masanalyzer = "masanalyzer.cli:main"
+masanalyzer-diff = "masanalyzer.diffcli:main"
+masanalyzer-delta = "masanalyzer.deltacli:main"
+masanalyzer-refresh-intel = "masanalyzer.intelcli:main"
+masanalyzer-dashboard = "masanalyzer.dashboard:main"
+
+[project.urls]
+Homepage = "https://github.com/samehsbouri/masanalyzer-"
+Repository = "https://github.com/samehsbouri/masanalyzer-"
+Issues = "https://github.com/samehsbouri/masanalyzer-/issues"
+Changelog = "https://github.com/samehsbouri/masanalyzer-/commits/main"
+Documentation = "https://github.com/samehsbouri/masanalyzer-/tree/main/docs"
+
+[tool.setuptools]
+packages = [
+    "masanalyzer",
+    "masanalyzer.android",
+    "masanalyzer.ios",
+    "masanalyzer.analysis",
+    "masanalyzer.reporting",
+    "masanalyzer.testing",
+]

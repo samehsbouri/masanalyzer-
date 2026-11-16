@@ -1,0 +1,44 @@
+# --- Python -------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+*.so
+.venv/
+venv/
+env/
+
+# --- test / tool caches -------------------------------------------------
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- generated scan output ---------------------------------------------
+# reports are produced by a scan; the fixtures that generate them are kept
+samples/out/
+samples/out2/
+samples/out_ios/
+*.sarif
+!samples/**/*.sarif
+
+# --- local dashboard state ---------------------------------------------
+.dash_demo/
+.dashboard/
+settings.json
+
+# --- design exploration ------------------------------------------------
+mockups/
+
+# --- editor / OS --------------------------------------------------------
+.vscode/
+.idea/
+.freebuff/
+.opencode/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini

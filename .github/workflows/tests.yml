@@ -1,0 +1,42 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install the analyzer
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Install the test runner
+        run: python -m pip install pytest
+
+      - name: Run the suite
+        run: python -m pytest -q
+
+      - name: Smoke-test the CLI on a sample bundle
+        run: |
+          python -m masanalyzer samples/InsecureBank -o out-ci --format json --format sarif --format html --no-intel-refresh
+          python -m masanalyzer --list-rules > rules.txt

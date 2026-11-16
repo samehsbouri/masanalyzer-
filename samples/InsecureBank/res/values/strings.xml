@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">InsecureBank</string>
+    <string name="api_endpoint">https://api.insecurebank.example</string>
+    <string name="mirror_endpoint">http://mirror.insecurebank.example</string>
+</resources>

@@ -1,0 +1,129 @@
+"""End-to-end tests: full scan() over the shipped sample fixtures.
+
+The samples are rebuilt from ``samples/make_samples.py`` when missing, so
+these tests stay self-contained.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import unittest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+ANDROID_SAMPLE = os.path.join(ROOT, "samples", "InsecureBank")
+IOS_SAMPLE = os.path.join(ROOT, "samples", "InsecureNotes")
+
+from masanalyzer.owasp import ORDER
+from masanalyzer.reporting import render
+from masanalyzer.scanner import scan
+
+
+def _rebuild_samples() -> None:
+    import subprocess
+    import sys
+
+    subprocess.run(
+        [sys.executable, "-X", "utf8", os.path.join(ROOT, "samples", "make_samples.py")],
+        cwd=ROOT,
+        check=True,
+    )
+
+
+if not (os.path.isdir(ANDROID_SAMPLE) and os.path.isdir(IOS_SAMPLE)):
+    _rebuild_samples()
+
+
+class TestAndroidSampleE2E(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.result = scan(ANDROID_SAMPLE)
+
+    def test_platform_and_identity(self) -> None:
+        self.assertEqual(self.result.platform, "android")
+        self.assertEqual(self.result.target.package, "com.example.insecurebank")
+        self.assertTrue(self.result.target.manifest)
+
+    def test_findings_scale(self) -> None:
+        self.assertGreaterEqual(len(self.result.findings), 20)
+        self.assertGreaterEqual(len(self.result.covered_categories), 8)
+
+    def test_no_analyzer_failures(self) -> None:
+        self.assertEqual(self.result.analyzers_failed, [])
+
+    def test_score_is_penalized(self) -> None:
+        self.assertIsNotNone(self.result.score)
+        self.assertLessEqual(self.result.score.total, 100.0)
+        self.assertLess(self.result.score.total, 90.0, "samples must not grade an A")
+        self.assertIn(self.result.score.grade, ("A", "B", "C", "D", "F"))
+        self.assertNotEqual(self.result.score.grade, "A+")
+
+    def test_expected_rules_fire(self) -> None:
+        ids = {f.rule_id for f in self.result.findings}
+        expected = {
+            "MAS-NET-006",     # trust-all TLS validator
+            "MAS-STO-001",     # world-readable prefs
+            "MAS-AUTH-001",    # exported provider
+            "MAS-BIN-002",     # non-PIE .so
+            "MAS-BIN-001",     # debuggable
+            "MAS-CRED-005",    # jdbc credential string
+            "MAS-CRY-002",     # DES
+            "MAS-MIS-003",     # SET_DEBUG_APP signature permission
+        }
+        missing = expected - ids
+        self.assertEqual(missing, set(), f"missing: {sorted(missing)}; got {sorted(ids)}")
+
+    def test_reports_render_all_formats(self) -> None:
+        for fmt in ("json", "md", "html", "sarif"):
+            out = render(self.result, fmt)
+            self.assertIn("masanalyzer", out.lower())
+        doc = json.loads(render(self.result, "json"))
+        self.assertGreater(len(doc["findings"]), 0)
+        sarif = json.loads(render(self.result, "sarif"))
+        self.assertEqual(sarif["version"], "2.1.0")
+
+
+class TestIosSampleE2E(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.result = scan(IOS_SAMPLE)
+
+    def test_platform_and_identity(self) -> None:
+        self.assertEqual(self.result.platform, "ios")
+        self.assertEqual(self.result.target.package, "com.example.insecurenotes")
+
+    def test_no_analyzer_failures(self) -> None:
+        self.assertEqual(self.result.analyzers_failed, [])
+
+    def test_expected_rules_fire(self) -> None:
+        ids = {f.rule_id for f in self.result.findings}
+        expected = {
+            "MAS-NET-007",     # ATS opt-out
+            "MAS-BIN-008",     # dev provisioning profile
+            "MAS-STO-005",     # creds in plist
+            "MAS-CRY-002",     # DES in Swift
+            "MAS-CRY-003",     # ECB in Swift
+            "MAS-CRED-002",    # hardcoded JWT-ish token in source
+        }
+        missing = expected - ids
+        self.assertEqual(missing, set(), f"missing: {sorted(missing)}; got {sorted(ids)}")
+
+    def test_supports_all_owasp_categories(self) -> None:
+        self.assertEqual(self.result.covered_categories, ORDER)
+
+
+class TestMinimumSeverityFilter(unittest.TestCase):
+    def test_high_floor_drops_medium(self) -> None:
+        full = scan(ANDROID_SAMPLE)
+        filtered = scan(ANDROID_SAMPLE, minimum_severity="high")
+        self.assertLess(len(filtered.findings), len(full.findings))
+        rank = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+        sevs = {f.severity.value for f in filtered.findings}
+        self.assertTrue(sevs <= {"high", "critical"})
+        if filtered.score is not None:
+            self.assertLessEqual(filtered.score.total, 100.0)
+
+
+if __name__ == "__main__":
+    unittest.main()

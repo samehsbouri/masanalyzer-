@@ -1,0 +1,3 @@
+-----BEGIN FAKE-CMS-----
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict><key>Name</key><string>InsecureNotes DevProfile</string><key>TeamName</key><string>Fixture Team</string><key>ApplicationIdentifierPrefix</key><array><string>9FIXTURE00</string></array><key>Entitlements</key><dict><key>get-task-allow</key><true/><key>application-identifier</key><string>9FIXTURE00.com.example.insecurenotes</string></dict></dict></plist>
