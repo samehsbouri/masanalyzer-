@@ -96,6 +96,26 @@ class TestTreeTarget(TempBase):
         joined = "|".join(s for _, s in t.string_pool)
         self.assertIn("jdbc:mysql", joined)
 
+    def test_ios_bundle_root_keeps_the_on_disk_case(self) -> None:
+        """A case-sensitive filesystem must still resolve the .app directory.
+
+        The lookup is case-insensitive, but rebuilding the path from the
+        lowercased relpath only works on Windows/macOS.
+        """
+        from masanalyzer.model import ScanFile
+        from masanalyzer.packaging import _ios_bundle_root
+
+        target = type("T", (), {})()
+        target.work_dir = self.tmp
+        target.files = [
+            ScanFile(path=os.path.join(self.tmp, "Payload", "InsecureNotes.app",
+                                       "Info.plist"),
+                     relpath="Payload/InsecureNotes.app/Info.plist", kind="plist"),
+        ]
+        root = _ios_bundle_root(target, self.tmp)
+        self.assertTrue(root.endswith("InsecureNotes.app"), root)
+        self.assertIn("Payload", root)
+
     def test_ios_tree(self) -> None:
         from masanalyzer.testing import build_ios_tree
 

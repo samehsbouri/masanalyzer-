@@ -777,10 +777,21 @@ def _reclassify_plists(target: Target) -> None:
 
 
 def _ios_bundle_root(target: Target, root: str) -> str:
+    """Path of the ``.app`` directory, preserving the on-disk name casing.
+
+    The lookup is case-insensitive, but the path handed back must keep the
+    original case: lowercasing it works on Windows/macOS and breaks on a
+    case-sensitive filesystem, where ``insecurenotes.app`` is not the
+    ``InsecureNotes.app`` that exists.
+    """
     for f in target.files:
-        low = f.relpath.lower()
-        if ".app/" in low:
-            return os.path.join(target.work_dir, low.split(".app/")[0] + ".app")
+        rel = (f.relpath or "").replace("\\", "/")
+        low = rel.lower()
+        marker = low.find(".app/")
+        if marker < 0:
+            continue
+        app_rel = rel[: marker + len(".app")]
+        return os.path.join(target.work_dir, *app_rel.split("/"))
     return root
 
 
